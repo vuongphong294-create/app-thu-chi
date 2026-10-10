@@ -43,7 +43,6 @@
 </head>
 <body>
 
-    <!-- 1. BẢNG THỐNG KÊ -->
     <div class="card">
         <h3>📊 Tổng Quan</h3>
         <div style="text-align: center;">
@@ -62,15 +61,12 @@
         </div>
     </div>
 
-    <!-- 2. BIỂU ĐỒ THỐNG KÊ -->
     <div class="card">
         <h3>📈 Biểu Đồ Thống Kê</h3>
-        
         <div style="font-size: 0.9em; font-weight: bold; text-align: center; margin-bottom: 10px;">SỐ DƯ HÀNG THÁNG</div>
         <div class="chart-container">
             <canvas id="lineChart"></canvas>
         </div>
-
         <div class="pie-controls">
             <div style="font-size: 0.9em; font-weight: bold;">TỈ LỆ MỤC ĐÍCH</div>
             <select id="pieType" onchange="drawCharts()" style="width: 120px; padding: 6px; margin: 0;">
@@ -83,7 +79,6 @@
         </div>
     </div>
 
-    <!-- 3. FORM NHẬP LIỆU -->
     <div class="card">
         <h3>📝 Thêm Giao Dịch</h3>
         <select id="type" onchange="changeColor()">
@@ -97,7 +92,6 @@
         <button id="btnSave" onclick="saveData()">LƯU GIAO DỊCH</button>
     </div>
 
-    <!-- 4. LỊCH SỬ GIAO DỊCH -->
     <div class="card">
         <h3>📜 Lịch Sử Giao Dịch</h3>
         <ul class="history-list" id="history-list">
@@ -106,14 +100,15 @@
     </div>
 
     <script>
+        // CẤU HÌNH FIREBASE ĐÃ CHÈN LINK CỦA BẠN
         const firebaseConfig = {
-            databaseURL: "https://money-bb5f5-default-rtdb.asia-southeast1.firebasedatabase.app/" // <--- ĐIỀN LINK FIREBASE CỦA BẠN VÀO ĐÂY
+            databaseURL: "https://money-bb5f5-default-rtdb.asia-southeast1.firebasedatabase.app/"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         document.getElementById('date').valueAsDate = new Date();
-        let allTransactions = []; // Lưu toàn bộ dữ liệu để vẽ biểu đồ
+        let allTransactions = []; 
         let lineChartInstance = null;
         let pieChartInstance = null;
 
@@ -155,7 +150,6 @@
             }
         }
 
-        // LẮNG NGHE DỮ LIỆU TỪ FIREBASE
         db.ref('transactions').on('value', (snapshot) => {
             const data = snapshot.val();
             const listEl = document.getElementById('history-list');
@@ -172,8 +166,6 @@
             }
 
             allTransactions = Object.keys(data).map(key => data[key]);
-            
-            // Xử lý danh sách hiển thị (mới nhất lên đầu)
             const sortedForList = [...allTransactions].sort((a, b) => new Date(b.Date) - new Date(a.Date) || b.Id - a.Id);
             
             sortedForList.forEach(item => {
@@ -202,7 +194,7 @@
             });
 
             updateStats(totalIncome, totalExpense);
-            drawCharts(); // Gọi hàm vẽ biểu đồ
+            drawCharts(); 
         });
 
         function updateStats(income, expense) {
@@ -211,11 +203,13 @@
             document.getElementById('lbl-balance').innerText = (income - expense).toLocaleString('vi-VN') + ' đ';
         }
 
-        // --- XỬ LÝ VẼ BIỂU ĐỒ ---
         function drawCharts() {
-            if (allTransactions.length === 0) return;
+            if (allTransactions.length === 0) {
+                if (lineChartInstance) lineChartInstance.destroy();
+                if (pieChartInstance) pieChartInstance.destroy();
+                return;
+            }
 
-            // 1. Vẽ Biểu đồ đường (Số dư hàng tháng)
             const monthlyData = {};
             allTransactions.forEach(t => {
                 const d = new Date(t.Date);
@@ -224,7 +218,6 @@
                 monthlyData[monthKey] += t.IsIncome ? t.Amount : -t.Amount;
             });
 
-            // Sắp xếp tháng tăng dần
             const sortedMonths = Object.keys(monthlyData).sort((a, b) => {
                 const [mA, yA] = a.split('/'); const [mB, yB] = b.split('/');
                 return new Date(2000+parseInt(yA), parseInt(mA)-1) - new Date(2000+parseInt(yB), parseInt(mB)-1);
@@ -252,11 +245,8 @@
                 options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
             });
 
-            // 2. Vẽ Biểu đồ tròn (Tỉ lệ mục đích)
             const isIncomePie = document.getElementById('pieType').value === "true";
             const pieRawData = {};
-            
-            // Lọc dữ liệu của tháng hiện tại
             const currentMonth = new Date().getMonth();
             const currentYear = new Date().getFullYear();
 
@@ -285,9 +275,7 @@
                 },
                 options: { 
                     maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { position: 'bottom' } 
-                    }
+                    plugins: { legend: { position: 'bottom' } }
                 }
             });
         }
