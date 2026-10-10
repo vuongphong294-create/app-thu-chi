@@ -2,283 +2,681 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Quản Lý Thu Chi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phần mềm Quản lý Tài chính Cá nhân</title>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 15px; background: #e9ecef; margin: 0; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        h3 { margin-top: 0; color: #333; font-size: 1.1em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        
-        .summary { display: flex; justify-content: space-between; text-align: center; margin-bottom: 10px; }
-        .summary div { flex: 1; }
-        .summary div:not(:last-child) { border-right: 1px solid #eee; }
-        .val-income { color: #20c997; font-weight: bold; font-size: 1.1em;}
-        .val-expense { color: #ff6b6b; font-weight: bold; font-size: 1.1em;}
-        .val-balance { color: #4285F4; font-weight: bold; font-size: 1.5em; margin: 5px 0 15px 0;}
+        :root {
+            --ctrl: #f0f0f0;
+            --coral: #F08080;
+            --teal: #20B2AA;
+            --yellow: #FFFFE0;
+            --border: #7a7a7a;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--ctrl); font-family: Arial, "Segoe UI", sans-serif; font-size: 14px; color: #000; }
+        .app { max-width: 1000px; margin: 0 auto; min-height: 100vh; background: var(--ctrl); }
 
-        input, select, button { width: 100%; padding: 12px; margin: 6px 0; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { background-color: #4285F4; color: white; border: none; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        button:active { filter: brightness(90%); }
+        /* ===== Thanh tab giống TabControl ===== */
+        .tabs { display: flex; padding: 4px 4px 0; border-bottom: 1px solid #acacac; background: var(--ctrl); overflow-x: auto; position: sticky; top: 0; z-index: 5; }
+        .tab { font: inherit; font-size: 15px; padding: 5px 10px; margin-right: -1px; border: 1px solid #acacac; border-bottom: none; background: var(--ctrl); color: #000; cursor: pointer; white-space: nowrap; }
+        .tab.active { background: #fff; padding-bottom: 7px; margin-top: -2px; position: relative; top: 1px; }
+        .page { display: none; padding: 15px; }
+        .page.active { display: block; }
 
-        .history-list { max-height: 300px; overflow-y: auto; padding: 0; margin: 0; list-style: none; }
-        .history-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; align-items: center;}
-        .history-item:last-child { border-bottom: none; }
-        .item-info { display: flex; flex-direction: column; }
-        .item-category { font-weight: bold; font-size: 1em; color: #333;}
-        .item-note { font-size: 0.85em; color: #777; margin-top: 3px; }
-        .item-date { font-size: 0.75em; color: #999; margin-top: 3px; }
-        .item-amount { font-weight: bold; font-size: 1em; text-align: right; }
-        .item-amount.inc { color: #20c997; }
-        .item-amount.exp { color: #ff6b6b; }
-        .btn-delete { background: #ff4d4d; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; width: auto; margin-left: 15px;}
-        
-        .chart-container { position: relative; height: 250px; width: 100%; margin-bottom: 20px;}
-        .pie-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;}
+        /* ===== Form nhập liệu ===== */
+        .form { display: grid; grid-template-columns: auto minmax(0, 45fr) auto minmax(0, 55fr); gap: 8px 12px; align-items: center; margin-bottom: 12px; }
+        .lbl { white-space: nowrap; }
+        .l1 { grid-column: 1; } .c1 { grid-column: 2; } .l2 { grid-column: 3; } .c2 { grid-column: 4; }
+        .r1 { grid-row: 1; } .r2 { grid-row: 2; } .r3 { grid-row: 3; }
+        input, select, button { font-family: Arial, "Segoe UI", sans-serif; font-size: 14px; }
+        .form input, .form select { width: 100%; height: 28px; padding: 3px 5px; border: 1px solid var(--border); border-radius: 0; background: #fff; }
+        .form select { background: #e5f1fb; }
+        .form input#amount0, .form input#amount1 { font-size: 15px; font-weight: bold; }
+        .form input::placeholder { color: #888; }
+        .newcat { display: flex; gap: 6px; }
+        .newcat input { flex: 1; min-width: 0; }
+        .btn { height: 28px; padding: 0 12px; border: 1px solid #888; background: var(--ctrl); color: #000; cursor: pointer; border-radius: 0; }
+        .btn:active { background: #d8d8d8; }
+        .quick { display: flex; flex-wrap: wrap; gap: 4px; }
+        .quick button { min-width: 34px; height: 28px; padding: 0 8px; border: 1px solid #d3d3d3; background: var(--yellow); cursor: pointer; border-radius: 0; font-size: 13px; }
+        .quick button.clear { background: var(--coral); color: #fff; }
+        .quick button:active { filter: brightness(92%); }
+
+        .save { display: block; width: 100%; height: 44px; margin-bottom: 14px; border: none; border-radius: 0; color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .save.exp { background: var(--coral); }
+        .save.inc { background: var(--teal); }
+        .save:active { filter: brightness(92%); }
+
+        /* ===== Bảng dữ liệu ===== */
+        .gridwrap { background: #fff; border: 1px solid #333; overflow: auto; max-height: calc(100vh - 290px); min-height: 220px; }
+        table.grid { width: 100%; min-width: 600px; border-collapse: collapse; }
+        .grid th { position: sticky; top: 0; z-index: 1; background: #fff; text-align: left; font-weight: normal; padding: 5px 8px; border-bottom: 1px solid #ccc; border-right: 1px solid #e0e0e0; white-space: nowrap; }
+        .grid td { padding: 0 4px; border-bottom: 1px solid #eee; border-right: 1px solid #f0f0f0; height: 30px; }
+        .grid td.date { padding: 0 8px; white-space: nowrap; }
+        .grid td input, .grid td select { width: 100%; height: 26px; padding: 2px 4px; border: 1px solid transparent; background: transparent; border-radius: 0; font-size: 14px; }
+        .grid td input:hover, .grid td select:hover { border-color: #ccc; }
+        .grid td input:focus, .grid td select:focus { border-color: #3c8dde; background: #fff; outline: none; }
+        .grid td.del { width: 80px; text-align: center; }
+        .grid td.del button { width: 100%; height: 24px; border: 1px solid #888; background: var(--ctrl); cursor: pointer; border-radius: 0; font-size: 13px; }
+        .grid td.del button:active { background: #d8d8d8; }
+        .grid tr.empty td { text-align: center; color: #999; padding: 24px; border: none; }
+
+        /* ===== Tab thống kê ===== */
+        .statrow { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+        .statrow label { font-weight: bold; }
+        .statrow input { height: 28px; padding: 3px 6px; border: 1px solid var(--border); background: #fff; border-radius: 0; }
+        .totals { display: grid; grid-template-columns: minmax(auto, 340px) 1fr; gap: 10px 20px; align-items: center; margin-bottom: 22px; }
+        .t-inc, .t-exp { font-size: 17px; font-weight: bold; }
+        .t-inc { color: #2E8B57; } .t-exp { color: #DC143C; }
+        .t-bal { grid-column: 1 / -1; font-size: 20px; font-weight: bold; color: #0000ff; }
+        .pct { font-style: italic; }
+        h4 { margin: 0 0 8px; font-size: 15px; }
+        .bars { margin-bottom: 24px; }
+        .barrow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .barrow .name { width: 40px; font-weight: bold; }
+        .bartrack { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+        .bar { height: 30px; min-width: 0; transition: width .3s; }
+        .bar.inc { background: #2E8B57; } .bar.exp { background: #DC143C; }
+        .barval { font-size: 12px; color: #444; white-space: nowrap; }
+        .chartbox { position: relative; background: #fff; border: 1px solid #aaa; padding: 8px; margin-bottom: 24px; }
+        .chartbox.line { height: 280px; }
+        .chartbox .empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; color: #888; background: #fff; }
+        .pie-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+        .pie-head h4 { margin: 0; }
+        .pie-head select { height: 28px; padding: 3px 6px; border: 1px solid var(--border); background: #e5f1fb; border-radius: 0; }
+        .chartbox.pie { display: flex; align-items: center; gap: 24px; min-height: 300px; }
+        .pie-canvas { position: relative; width: 280px; height: 280px; flex: none; }
+        #pieLegend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0; }
+        #pieLegend li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+        #pieLegend .sw { width: 12px; height: 12px; flex: none; }
+
+        .status { padding: 6px 15px; color: #b00020; display: none; }
+
+        @media (max-width: 720px) {
+            .page { padding: 10px; }
+            .form { grid-template-columns: auto minmax(0, 1fr); }
+            .l1, .l2 { grid-column: 1; } .c1, .c2 { grid-column: 2; }
+            .r1, .r2, .r3 { grid-row: auto; }
+            .quick, .newcat { grid-column: 2; }
+            .form input, .form select, .btn, .quick button { height: 36px; font-size: 16px; }
+            .grid td input, .grid td select { font-size: 16px; height: 32px; }
+            .gridwrap { max-height: none; }
+            .totals { grid-template-columns: 1fr; gap: 4px; }
+            .t-exp { margin-top: 8px; }
+            .chartbox.pie { flex-direction: column; align-items: stretch; }
+            .pie-canvas { margin: 0 auto; max-width: 100%; }
+        }
     </style>
 </head>
 <body>
-
-    <div class="card">
-        <h3>📊 Tổng Quan</h3>
-        <div style="text-align: center;">
-            <div style="font-size: 0.9em; color: #666;">Số dư hiện tại</div>
-            <div class="val-balance" id="lbl-balance">0 đ</div>
-        </div>
-        <div class="summary">
-            <div>
-                <div style="font-size: 0.8em; color: #666;">Tổng thu</div>
-                <div class="val-income" id="lbl-income">0 đ</div>
-            </div>
-            <div>
-                <div style="font-size: 0.8em; color: #666;">Tổng chi</div>
-                <div class="val-expense" id="lbl-expense">0 đ</div>
-            </div>
-        </div>
+<div class="app">
+    <div class="tabs">
+        <button class="tab active" data-tab="0">➖ CHI TIÊU</button>
+        <button class="tab" data-tab="1">➕ THU NHẬP</button>
+        <button class="tab" data-tab="2">📊 THỐNG KÊ &amp; BIỂU ĐỒ</button>
     </div>
+    <div class="status" id="status"></div>
 
-    <div class="card">
-        <h3>📈 Biểu Đồ Thống Kê</h3>
-        <div style="font-size: 0.9em; font-weight: bold; text-align: center; margin-bottom: 10px;">SỐ DƯ HÀNG THÁNG</div>
-        <div class="chart-container">
-            <canvas id="lineChart"></canvas>
+    <div id="pages"></div>
+
+    <!-- ===== Tab thống kê ===== -->
+    <section class="page" id="page-2">
+        <div class="statrow">
+            <label for="statMonth">Chọn tháng thống kê:</label>
+            <input type="month" id="statMonth">
         </div>
-        <div class="pie-controls">
-            <div style="font-size: 0.9em; font-weight: bold;">TỈ LỆ MỤC ĐÍCH</div>
-            <select id="pieType" onchange="drawCharts()" style="width: 120px; padding: 6px; margin: 0;">
+
+        <div class="totals">
+            <div class="t-inc" id="lblInc">Tổng thu: +0 đ</div>
+            <div class="pct" id="pctInc"></div>
+            <div class="t-exp" id="lblExp">Tổng chi: -0 đ</div>
+            <div class="pct" id="pctExp"></div>
+            <div class="t-bal" id="lblBal">SỐ DƯ THÁNG: 0 đ</div>
+        </div>
+
+        <h4>BIỂU ĐỒ SO SÁNH THU / CHI</h4>
+        <div class="bars">
+            <div class="barrow"><div class="name">THU</div><div class="bartrack"><div class="bar inc" id="barInc" style="width:0"></div><span class="barval" id="barIncVal"></span></div></div>
+            <div class="barrow"><div class="name">CHI</div><div class="bartrack"><div class="bar exp" id="barExp" style="width:0"></div><span class="barval" id="barExpVal"></span></div></div>
+        </div>
+
+        <h4>BIỂU ĐỒ ĐƯỜNG: SỐ DƯ HÀNG THÁNG (VNĐ)</h4>
+        <div class="chartbox line">
+            <canvas id="lineChart"></canvas>
+            <div class="empty" id="lineEmpty">Chưa có dữ liệu</div>
+        </div>
+
+        <div class="pie-head">
+            <h4>BIỂU ĐỒ TRÒN: TỈ LỆ CÁC MỤC ĐÍCH</h4>
+            <select id="pieType">
                 <option value="false">Chi tiêu</option>
                 <option value="true">Thu nhập</option>
             </select>
         </div>
-        <div class="chart-container" style="height: 300px;">
-            <canvas id="pieChart"></canvas>
+        <div class="chartbox pie">
+            <div class="pie-canvas"><canvas id="pieChart"></canvas></div>
+            <ul id="pieLegend"></ul>
+            <div class="empty" id="pieEmpty">Chưa có dữ liệu</div>
         </div>
-    </div>
+    </section>
+</div>
 
-    <div class="card">
-        <h3>📝 Thêm Giao Dịch</h3>
-        <select id="type" onchange="changeColor()">
-            <option value="false">➖ Chi Tiêu</option>
-            <option value="true">➕ Thu Nhập</option>
-        </select>
-        <input type="date" id="date" required>
-        <input type="number" id="amount" placeholder="Số tiền (VNĐ)" required>
-        <input type="text" id="category" placeholder="Mục đích (VD: Tiền ăn)" required>
-        <input type="text" id="note" placeholder="Ghi chú (Tùy chọn)">
-        <button id="btnSave" onclick="saveData()">LƯU GIAO DỊCH</button>
-    </div>
+<script>
+    // ================= FIREBASE =================
+    const firebaseConfig = {
+        databaseURL: "https://money-bb5f5-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    <div class="card">
-        <h3>📜 Lịch Sử Giao Dịch</h3>
-        <ul class="history-list" id="history-list">
-            <li style="text-align:center; color:#999; padding:20px;">Đang tải dữ liệu...</li>
-        </ul>
-    </div>
+    // ================= TRẠNG THÁI =================
+    const DEFAULT_CATS = [
+        { Name: "Tiền trọ", IsIncome: false },
+        { Name: "Tiền ăn", IsIncome: false },
+        { Name: "Lương", IsIncome: true }
+    ];
+    const PIE_COLORS = ['#4285F4', '#EA4335', '#FBBC05', '#34A853', '#AB47BC', '#FF7043', '#00ACC1', '#8D6E63'];
 
-    <script>
-        // CẤU HÌNH FIREBASE ĐÃ CHÈN LINK CỦA BẠN
-        const firebaseConfig = {
-            databaseURL: "https://money-bb5f5-default-rtdb.asia-southeast1.firebasedatabase.app/"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+    let transactions = [];
+    let storedCats = [];
+    let currentTab = 0;
+    let lineChart = null, pieChart = null;
+    const pendingSelect = [null, null];
 
-        document.getElementById('date').valueAsDate = new Date();
-        let allTransactions = []; 
-        let lineChartInstance = null;
-        let pieChartInstance = null;
+    // ================= TIỆN ÍCH =================
+    const $ = id => document.getElementById(id);
+    const fmt = n => Number(n).toLocaleString('en-US');
+    const parseAmount = s => parseFloat(String(s).replace(/[,.\s]/g, ''));
+    const pad2 = n => String(n).padStart(2, '0');
+    function todayStr() { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+    function showDate(s) { const [y, m, d] = s.split('-'); return d + '/' + m + '/' + y; }
+    function ym(s) { return { y: parseInt(s.slice(0, 4), 10), m: parseInt(s.slice(5, 7), 10) }; }
+    function formatShort(v) {
+        if (Math.abs(v) >= 1e6) return (Math.round(v / 1e4) / 100) + ' tr';
+        return fmt(v);
+    }
 
-        function changeColor() {
-            const isInc = document.getElementById('type').value === "true";
-            document.getElementById('btnSave').style.backgroundColor = isInc ? "#20c997" : "#ff6b6b";
-        }
-        changeColor();
+    function catNames(isIncome, extra) {
+        const list = [];
+        const add = n => { if (n && !list.some(x => x.toLowerCase() === n.toLowerCase())) list.push(n); };
+        const src = storedCats.length ? storedCats : DEFAULT_CATS;
+        src.filter(c => c.IsIncome === isIncome).forEach(c => add(c.Name));
+        transactions.filter(t => t.IsIncome === isIncome).forEach(t => add(t.CategoryName));
+        add(extra);
+        return list;
+    }
 
-        function saveData() {
-            const isIncome = document.getElementById('type').value === "true";
-            const amount = parseFloat(document.getElementById('amount').value);
-            const category = document.getElementById('category').value;
-            
-            if (!amount || !category) { alert("Vui lòng nhập đủ số tiền và mục đích!"); return; }
+    // ================= DỰNG GIAO DIỆN 2 TAB NHẬP LIỆU =================
+    function buildInputTab(i) {
+        const isIncome = i === 1;
+        const sec = document.createElement('section');
+        sec.className = 'page' + (i === 0 ? ' active' : '');
+        sec.id = 'page-' + i;
+        sec.innerHTML = `
+            <div class="form">
+                <label class="lbl l1 r1" for="date${i}">Ngày:</label>
+                <input class="c1 r1" type="date" id="date${i}">
+                <label class="lbl l1 r2" for="cat${i}">Mục đích:</label>
+                <select class="c1 r2" id="cat${i}"></select>
+                <div class="newcat c1 r3">
+                    <input type="text" id="newcat${i}" placeholder="Mục mới..." autocomplete="off">
+                    <button class="btn" id="addcat${i}" type="button">Thêm</button>
+                </div>
+                <label class="lbl l2 r1" for="amount${i}">Số tiền:</label>
+                <input class="c2 r1" type="text" inputmode="numeric" autocomplete="off" id="amount${i}">
+                <div class="quick c2 r2" id="quick${i}"></div>
+                <label class="lbl l2 r3" for="note${i}">Ghi chú:</label>
+                <input class="c2 r3" type="text" id="note${i}" autocomplete="off">
+            </div>
+            <button class="save ${isIncome ? 'inc' : 'exp'}" id="save${i}" type="button">${isIncome ? 'LƯU KHOẢN THU' : 'LƯU KHOẢN CHI'}</button>
+            <div class="gridwrap">
+                <table class="grid">
+                    <thead><tr><th>Ngày</th><th>Mục đích</th><th>Số tiền (VNĐ)</th><th>Ghi chú</th><th></th></tr></thead>
+                    <tbody id="body${i}"></tbody>
+                </table>
+            </div>`;
+        $('pages').appendChild(sec);
 
-            const id = Date.now(); 
-            const data = {
-                Id: id,
-                Date: document.getElementById('date').value + "T00:00:00",
-                CategoryName: category,
-                Amount: amount,
-                Note: document.getElementById('note').value,
-                IsIncome: isIncome
-            };
+        $('date' + i).value = todayStr();
 
-            db.ref('transactions/' + id).set(data)
-            .then(() => {
-                document.getElementById('amount').value = '';
-                document.getElementById('note').value = '';
-                document.getElementById('category').value = '';
-            })
-            .catch(error => alert("Lỗi kết nối: " + error));
-        }
-
-        function deleteItem(id) {
-            if(confirm("Bạn có chắc chắn muốn xóa giao dịch này?")) {
-                db.ref('transactions/' + id).remove();
-            }
-        }
-
-        db.ref('transactions').on('value', (snapshot) => {
-            const data = snapshot.val();
-            const listEl = document.getElementById('history-list');
-            listEl.innerHTML = '';
-            allTransactions = [];
-
-            let totalIncome = 0, totalExpense = 0;
-            
-            if (!data) {
-                listEl.innerHTML = '<li style="text-align:center; color:#999; padding:20px;">Chưa có giao dịch nào.</li>';
-                updateStats(0, 0);
-                drawCharts();
-                return;
-            }
-
-            allTransactions = Object.keys(data).map(key => data[key]);
-            const sortedForList = [...allTransactions].sort((a, b) => new Date(b.Date) - new Date(a.Date) || b.Id - a.Id);
-            
-            sortedForList.forEach(item => {
-                if (item.IsIncome) totalIncome += item.Amount;
-                else totalExpense += item.Amount;
-
-                const dateStr = new Date(item.Date).toLocaleDateString('vi-VN');
-                const amountStr = item.Amount.toLocaleString('vi-VN') + ' đ';
-                const typeClass = item.IsIncome ? 'inc' : 'exp';
-                const sign = item.IsIncome ? '+' : '-';
-
-                const li = document.createElement('li');
-                li.className = 'history-item';
-                li.innerHTML = `
-                    <div class="item-info">
-                        <span class="item-category">${item.CategoryName}</span>
-                        ${item.Note ? `<span class="item-note">${item.Note}</span>` : ''}
-                        <span class="item-date">${dateStr}</span>
-                    </div>
-                    <div style="display:flex; align-items:center;">
-                        <div class="item-amount ${typeClass}">${sign}${amountStr}</div>
-                        <button class="btn-delete" onclick="deleteItem('${item.Id}')">Xóa</button>
-                    </div>
-                `;
-                listEl.appendChild(li);
+        // Dàn nút thêm số 0 nhanh
+        ["0", "00", "000", "0000", "00000", "000000", "Xóa"].forEach(z => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = z;
+            if (z === 'Xóa') b.className = 'clear';
+            b.addEventListener('click', () => {
+                const inp = $('amount' + i);
+                if (z === 'Xóa') inp.value = '';
+                else {
+                    const raw = inp.value.replace(/\D/g, '');
+                    if (!raw) return;
+                    inp.value = fmt(raw + z);
+                }
+                inp.focus();
             });
-
-            updateStats(totalIncome, totalExpense);
-            drawCharts(); 
+            $('quick' + i).appendChild(b);
         });
 
-        function updateStats(income, expense) {
-            document.getElementById('lbl-income').innerText = '+' + income.toLocaleString('vi-VN') + ' đ';
-            document.getElementById('lbl-expense').innerText = '-' + expense.toLocaleString('vi-VN') + ' đ';
-            document.getElementById('lbl-balance').innerText = (income - expense).toLocaleString('vi-VN') + ' đ';
+        // Tự định dạng 1,000,000 khi gõ
+        $('amount' + i).addEventListener('input', e => {
+            const raw = e.target.value.replace(/\D/g, '');
+            e.target.value = raw ? fmt(raw) : '';
+        });
+
+        // Enter ở Số tiền / Ghi chú -> lưu luôn
+        ['amount', 'note'].forEach(k => $(k + i).addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); saveTransaction(i); }
+        }));
+        $('newcat' + i).addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); addCategory(i); }
+        });
+
+        $('addcat' + i).addEventListener('click', () => addCategory(i));
+        $('save' + i).addEventListener('click', () => saveTransaction(i));
+    }
+
+    // ================= THÊM MỤC / LƯU GIAO DỊCH =================
+    function addCategory(i) {
+        const isIncome = i === 1;
+        const name = $('newcat' + i).value.trim();
+        if (!name) return;
+        if (catNames(isIncome).some(n => n.toLowerCase() === name.toLowerCase())) {
+            alert('Mục này đã tồn tại!');
+            return;
+        }
+        if (storedCats.length === 0) DEFAULT_CATS.forEach(c => db.ref('categories').push(c));
+        pendingSelect[i] = name;
+        db.ref('categories').push({ Name: name, IsIncome: isIncome })
+            .then(() => { $('newcat' + i).value = ''; })
+            .catch(err => alert('Lỗi kết nối: ' + err));
+    }
+
+    function saveTransaction(i) {
+        const isIncome = i === 1;
+        const amount = parseAmount($('amount' + i).value);
+        if (!(amount > 0)) { alert('Vui lòng nhập số tiền hợp lệ!'); return; }
+        const category = $('cat' + i).value;
+        if (!category) { alert('Vui lòng chọn mục đích!'); return; }
+        const date = $('date' + i).value;
+        if (!date) { alert('Vui lòng chọn ngày!'); return; }
+
+        const id = Date.now();
+        db.ref('transactions/' + id).set({
+            Id: id,
+            Date: date + 'T00:00:00',
+            CategoryName: category,
+            Amount: amount,
+            Note: $('note' + i).value.trim(),
+            IsIncome: isIncome
+        }).then(() => {
+            $('amount' + i).value = '';
+            $('note' + i).value = '';
+            $('amount' + i).focus();
+        }).catch(err => alert('Lỗi kết nối: ' + err));
+    }
+
+    // ================= BẢNG DỮ LIỆU (SỬA / XÓA TRỰC TIẾP) =================
+    function renderCategorySelects() {
+        [0, 1].forEach(i => {
+            const sel = $('cat' + i);
+            const keep = pendingSelect[i] || sel.value;
+            const names = catNames(i === 1);
+            sel.innerHTML = '';
+            names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+            if (keep && names.includes(keep)) sel.value = keep;
+            if (pendingSelect[i] && names.includes(pendingSelect[i])) pendingSelect[i] = null;
+        });
+    }
+
+    function renderTable(i) {
+        const isIncome = i === 1;
+        const body = $('body' + i);
+        const rows = transactions.filter(t => t.IsIncome === isIncome)
+            .sort((a, b) => (a.Date < b.Date ? 1 : a.Date > b.Date ? -1 : b.Id - a.Id));
+        body.innerHTML = '';
+
+        if (!rows.length) {
+            const tr = document.createElement('tr');
+            tr.className = 'empty';
+            tr.innerHTML = '<td colspan="5">Chưa có giao dịch nào.</td>';
+            body.appendChild(tr);
+            return;
         }
 
-        function drawCharts() {
-            if (allTransactions.length === 0) {
-                if (lineChartInstance) lineChartInstance.destroy();
-                if (pieChartInstance) pieChartInstance.destroy();
-                return;
+        rows.forEach(t => {
+            const tr = document.createElement('tr');
+
+            const tdDate = document.createElement('td');
+            tdDate.className = 'date';
+            tdDate.textContent = showDate(t.Date);
+
+            const tdCat = document.createElement('td');
+            const sel = document.createElement('select');
+            sel.dataset.key = t.key; sel.dataset.col = 'cat';
+            catNames(isIncome, t.CategoryName).forEach(n => {
+                const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o);
+            });
+            sel.value = t.CategoryName;
+            sel.addEventListener('change', () => db.ref('transactions/' + t.key).update({ CategoryName: sel.value }));
+            tdCat.appendChild(sel);
+
+            const tdAmt = document.createElement('td');
+            const amt = document.createElement('input');
+            amt.type = 'text'; amt.inputMode = 'numeric'; amt.autocomplete = 'off';
+            amt.value = fmt(t.Amount);
+            amt.dataset.key = t.key; amt.dataset.col = 'amt';
+            amt.addEventListener('focus', () => amt.select());
+            amt.addEventListener('change', () => {
+                const v = parseAmount(amt.value);
+                if (!(v > 0)) {
+                    alert('Số tiền không hợp lệ!');
+                    amt.value = fmt(t.Amount);
+                    return;
+                }
+                if (v !== t.Amount) db.ref('transactions/' + t.key).update({ Amount: v });
+                else amt.value = fmt(v);
+            });
+            tdAmt.appendChild(amt);
+
+            const tdNote = document.createElement('td');
+            const note = document.createElement('input');
+            note.type = 'text'; note.autocomplete = 'off';
+            note.value = t.Note;
+            note.dataset.key = t.key; note.dataset.col = 'note';
+            note.addEventListener('change', () => db.ref('transactions/' + t.key).update({ Note: note.value.trim() }));
+            tdNote.appendChild(note);
+
+            // Enter = chốt giá trị đang sửa, Esc = hủy
+            [amt, note].forEach(inp => inp.addEventListener('keydown', e => {
+                if (e.key === 'Enter') inp.blur();
+                if (e.key === 'Escape') { inp.value = inp === amt ? fmt(t.Amount) : t.Note; inp.blur(); }
+            }));
+
+            const tdDel = document.createElement('td');
+            tdDel.className = 'del';
+            const btn = document.createElement('button');
+            btn.type = 'button'; btn.textContent = 'Xóa';
+            btn.addEventListener('click', () => {
+                const info = showDate(t.Date) + ' - ' + t.CategoryName + ' - ' + fmt(t.Amount) + ' đ';
+                if (confirm('Bạn có chắc muốn xóa khoản này?\n' + info)) db.ref('transactions/' + t.key).remove();
+            });
+            tdDel.appendChild(btn);
+
+            tr.append(tdDate, tdCat, tdAmt, tdNote, tdDel);
+            body.appendChild(tr);
+        });
+    }
+
+    // ================= THỐNG KÊ & BIỂU ĐỒ =================
+    function sumMonth(y, m, isIncome) {
+        return transactions.filter(t => t.IsIncome === isIncome && ym(t.Date).y === y && ym(t.Date).m === m)
+            .reduce((s, t) => s + t.Amount, 0);
+    }
+
+    function percentText(cur, prev, isIncome, el) {
+        if (prev === 0) {
+            el.textContent = cur > 0 ? '(Tăng 100% so với tháng trước)' : '(Không có dữ liệu tháng trước)';
+            el.style.color = '';
+            return;
+        }
+        const p = (cur - prev) / prev * 100;
+        const r = Math.round(Math.abs(p) * 100) / 100;
+        el.textContent = (p >= 0 ? '(Tăng ' : '(Giảm ') + r + '% so với tháng trước)';
+        if (isIncome) el.style.color = p >= 0 ? '#2E8B57' : '#FFA500';
+        else el.style.color = p >= 0 ? '#DC143C' : '#2E8B57';
+    }
+
+    function renderStats() {
+        if (!$('statMonth').value) $('statMonth').value = todayStr().slice(0, 7);
+        const { y, m } = ym($('statMonth').value);
+        const py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1;
+
+        const inc = sumMonth(y, m, true), exp = sumMonth(y, m, false);
+        const pInc = sumMonth(py, pm, true), pExp = sumMonth(py, pm, false);
+
+        $('lblInc').textContent = 'Tổng thu: +' + fmt(inc) + ' đ';
+        $('lblExp').textContent = 'Tổng chi: -' + fmt(exp) + ' đ';
+        $('lblBal').textContent = 'SỐ DƯ THÁNG: ' + fmt(inc - exp) + ' đ';
+        percentText(inc, pInc, true, $('pctInc'));
+        percentText(exp, pExp, false, $('pctExp'));
+
+        // Biểu đồ cột thu / chi
+        const max = Math.max(inc, exp);
+        $('barInc').style.width = max > 0 ? (inc / max * 70) + '%' : '0';
+        $('barExp').style.width = max > 0 ? (exp / max * 70) + '%' : '0';
+        $('barIncVal').textContent = inc > 0 ? fmt(inc) : '';
+        $('barExpVal').textContent = exp > 0 ? fmt(exp) : '';
+
+        renderLineChart();
+        renderPieChart(y, m);
+    }
+
+    // Vẽ giá trị lên từng điểm của biểu đồ đường
+    const valueLabelPlugin = {
+        id: 'valueLabels',
+        afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            const ds = chart.data.datasets[0];
+            const meta = chart.getDatasetMeta(0);
+            ctx.save();
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            meta.data.forEach((pt, idx) => {
+                const v = ds.data[idx];
+                ctx.fillStyle = v >= 0 ? '#2E8B57' : '#DC143C';
+                ctx.fillText(formatShort(v), pt.x, v >= 0 ? pt.y - 10 : pt.y + 20);
+            });
+            ctx.restore();
+        }
+    };
+
+    // Ghi % lên từng miếng bánh
+    const pieLabelPlugin = {
+        id: 'pieLabels',
+        afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            const data = chart.data.datasets[0].data;
+            const total = data.reduce((a, b) => a + b, 0);
+            ctx.save();
+            ctx.font = 'bold 13px Arial';
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            chart.getDatasetMeta(0).data.forEach((arc, idx) => {
+                const pct = data[idx] / total * 100;
+                if (pct < 5) return;
+                const p = arc.tooltipPosition();
+                ctx.fillText((Math.round(pct * 10) / 10) + '%', p.x, p.y);
+            });
+            ctx.restore();
+        }
+    };
+
+    function renderLineChart() {
+        let labels = [], values = [];
+        if (transactions.length) {
+            const monthly = {};
+            transactions.forEach(t => {
+                const k = t.Date.slice(0, 7);
+                monthly[k] = (monthly[k] || 0) + (t.IsIncome ? t.Amount : -t.Amount);
+            });
+            const keys = Object.keys(monthly).sort();
+            let a = ym(keys[0] + '-01'), b = ym(keys[keys.length - 1] + '-01');
+            let idx = a.y * 12 + a.m - 1, last = b.y * 12 + b.m - 1;
+            if (last - idx >= 12) idx = last - 11; // tối đa 12 tháng gần nhất
+            for (; idx <= last; idx++) {
+                const yy = Math.floor(idx / 12), mm = idx % 12 + 1;
+                labels.push(pad2(mm) + '/' + String(yy).slice(-2));
+                values.push(monthly[yy + '-' + pad2(mm)] || 0);
             }
-
-            const monthlyData = {};
-            allTransactions.forEach(t => {
-                const d = new Date(t.Date);
-                const monthKey = (d.getMonth() + 1).toString().padStart(2, '0') + '/' + d.getFullYear().toString().substr(-2);
-                if (!monthlyData[monthKey]) monthlyData[monthKey] = 0;
-                monthlyData[monthKey] += t.IsIncome ? t.Amount : -t.Amount;
-            });
-
-            const sortedMonths = Object.keys(monthlyData).sort((a, b) => {
-                const [mA, yA] = a.split('/'); const [mB, yB] = b.split('/');
-                return new Date(2000+parseInt(yA), parseInt(mA)-1) - new Date(2000+parseInt(yB), parseInt(mB)-1);
-            });
-            const lineLabels = sortedMonths;
-            const lineValues = sortedMonths.map(m => monthlyData[m]);
-
-            if (lineChartInstance) lineChartInstance.destroy();
-            const ctxLine = document.getElementById('lineChart').getContext('2d');
-            lineChartInstance = new Chart(ctxLine, {
-                type: 'line',
-                data: {
-                    labels: lineLabels,
-                    datasets: [{
-                        label: 'Số dư',
-                        data: lineValues,
-                        borderColor: '#4285F4',
-                        backgroundColor: 'rgba(66, 133, 244, 0.2)',
-                        borderWidth: 2,
-                        pointBackgroundColor: lineValues.map(v => v >= 0 ? '#20c997' : '#ff6b6b'),
-                        fill: true,
-                        tension: 0.1
-                    }]
-                },
-                options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-            });
-
-            const isIncomePie = document.getElementById('pieType').value === "true";
-            const pieRawData = {};
-            const currentMonth = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
-
-            allTransactions.forEach(t => {
-                const d = new Date(t.Date);
-                if (t.IsIncome === isIncomePie && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-                    if (!pieRawData[t.CategoryName]) pieRawData[t.CategoryName] = 0;
-                    pieRawData[t.CategoryName] += t.Amount;
-                }
-            });
-
-            const pieLabels = Object.keys(pieRawData);
-            const pieValues = Object.values(pieRawData);
-            const pieColors = ['#4285F4', '#EA4335', '#FBBC05', '#34A853', '#AB47BC', '#FF7043', '#00ACC1', '#8D6E63'];
-
-            if (pieChartInstance) pieChartInstance.destroy();
-            const ctxPie = document.getElementById('pieChart').getContext('2d');
-            pieChartInstance = new Chart(ctxPie, {
-                type: 'pie',
-                data: {
-                    labels: pieLabels,
-                    datasets: [{
-                        data: pieValues,
-                        backgroundColor: pieColors
-                    }]
-                },
-                options: { 
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
         }
-    </script>
+
+        $('lineEmpty').style.display = labels.length ? 'none' : 'flex';
+        if (lineChart) { lineChart.destroy(); lineChart = null; }
+        if (!labels.length) return;
+
+        lineChart = new Chart($('lineChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Số dư',
+                    data: values,
+                    borderColor: '#4169E1',
+                    borderWidth: 2.5,
+                    tension: 0,
+                    fill: false,
+                    pointRadius: 5,
+                    pointBackgroundColor: values.map(v => v >= 0 ? '#2E8B57' : '#DC143C'),
+                    pointBorderColor: values.map(v => v >= 0 ? '#2E8B57' : '#DC143C')
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                layout: { padding: { top: 20, right: 20 } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: c => 'Số dư: ' + fmt(c.parsed.y) + ' đ' } }
+                },
+                scales: {
+                    y: { beginAtZero: true, grace: '12%', ticks: { callback: v => formatShort(v) } }
+                }
+            },
+            plugins: [valueLabelPlugin]
+        });
+    }
+
+    function renderPieChart(y, m) {
+        const isIncome = $('pieType').value === 'true';
+        const map = {};
+        transactions.filter(t => t.IsIncome === isIncome && ym(t.Date).y === y && ym(t.Date).m === m)
+            .forEach(t => { map[t.CategoryName] = (map[t.CategoryName] || 0) + t.Amount; });
+
+        let groups = Object.keys(map).map(k => [k, map[k]]).sort((a, b) => b[1] - a[1]);
+        if (groups.length > 8) {
+            const rest = groups.slice(7).reduce((s, g) => s + g[1], 0);
+            groups = groups.slice(0, 7).concat([['Khác', rest]]);
+        }
+        const total = groups.reduce((s, g) => s + g[1], 0);
+
+        $('pieEmpty').style.display = total > 0 ? 'none' : 'flex';
+        const legend = $('pieLegend');
+        legend.innerHTML = '';
+        if (pieChart) { pieChart.destroy(); pieChart = null; }
+        if (!(total > 0)) return;
+
+        groups.forEach((g, idx) => {
+            const li = document.createElement('li');
+            const sw = document.createElement('span');
+            sw.className = 'sw';
+            sw.style.background = PIE_COLORS[idx % PIE_COLORS.length];
+            const tx = document.createElement('span');
+            tx.textContent = g[0] + ': ' + (Math.round(g[1] / total * 1000) / 10) + '% (' + fmt(g[1]) + ' đ)';
+            li.append(sw, tx);
+            legend.appendChild(li);
+        });
+
+        pieChart = new Chart($('pieChart').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: groups.map(g => g[0]),
+                datasets: [{
+                    data: groups.map(g => g[1]),
+                    backgroundColor: groups.map((g, idx) => PIE_COLORS[idx % PIE_COLORS.length]),
+                    borderColor: '#fff',
+                    borderWidth: groups.length > 1 ? 2 : 0
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: c => c.label + ': ' + fmt(c.parsed) + ' đ' } }
+                }
+            },
+            plugins: [pieLabelPlugin]
+        });
+    }
+
+    // ================= CHUYỂN TAB =================
+    function switchTab(n) {
+        currentTab = n;
+        document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', +b.dataset.tab === n));
+        [0, 1, 2].forEach(i => $('page-' + i).classList.toggle('active', i === n));
+        if (n === 2) renderStats(); // chỉ vẽ biểu đồ khi tab đang hiển thị để có kích thước đúng
+    }
+
+    // ================= VẼ LẠI TOÀN BỘ =================
+    // Hoãn một nhịp để việc chuyển ô bằng phím Tab không bị mất con trỏ
+    let renderTimer = null;
+    function scheduleRender() {
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(renderAll, 0);
+    }
+
+    function renderAll() {
+        const a = document.activeElement;
+        const focusKey = a && a.dataset && a.dataset.key ? a.dataset.key + '|' + a.dataset.col : null;
+
+        renderCategorySelects();
+        renderTable(0);
+        renderTable(1);
+        if (currentTab === 2) renderStats();
+
+        if (focusKey) {
+            const [key, col] = focusKey.split('|');
+            const el = document.querySelector('[data-key="' + key + '"][data-col="' + col + '"]');
+            if (el && el !== document.activeElement) el.focus();
+        }
+    }
+
+    // ================= KHỞI TẠO =================
+    buildInputTab(0);
+    buildInputTab(1);
+    $('statMonth').value = todayStr().slice(0, 7);
+    $('statMonth').addEventListener('change', renderStats);
+    $('pieType').addEventListener('change', renderStats);
+    document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => switchTab(+b.dataset.tab)));
+
+    function onError(err) {
+        const s = $('status');
+        s.style.display = 'block';
+        s.textContent = 'Lỗi kết nối dữ liệu: ' + err.message;
+    }
+
+    db.ref('categories').on('value', snap => {
+        const data = snap.val() || {};
+        storedCats = Object.keys(data).map(k => ({
+            Name: data[k].Name,
+            IsIncome: data[k].IsIncome === true || data[k].IsIncome === 'true'
+        })).filter(c => c.Name);
+        scheduleRender();
+    }, onError);
+
+    db.ref('transactions').on('value', snap => {
+        const data = snap.val() || {};
+        transactions = Object.keys(data).map(k => {
+            const t = data[k] || {};
+            return {
+                key: k,
+                Id: Number(t.Id) || Number(k) || 0,
+                Date: String(t.Date || '').slice(0, 10),
+                CategoryName: t.CategoryName || '',
+                Amount: Number(t.Amount) || 0,
+                Note: t.Note || '',
+                IsIncome: t.IsIncome === true || t.IsIncome === 'true'
+            };
+        }).filter(t => /^\d{4}-\d{2}-\d{2}$/.test(t.Date));
+        scheduleRender();
+    }, onError);
+
+    renderAll();
+</script>
 </body>
 </html>
