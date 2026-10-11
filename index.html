@@ -77,13 +77,6 @@
         .t-bal { grid-column: 1 / -1; font-size: 20px; font-weight: bold; color: #0000ff; }
         .pct { font-style: italic; }
         h4 { margin: 0 0 8px; font-size: 15px; }
-        .bars { margin-bottom: 24px; }
-        .barrow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .barrow .name { width: 40px; font-weight: bold; }
-        .bartrack { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
-        .bar { height: 30px; min-width: 0; transition: width .3s; }
-        .bar.inc { background: #2E8B57; } .bar.exp { background: #DC143C; }
-        .barval { font-size: 12px; color: #444; white-space: nowrap; }
         .chartbox { position: relative; background: #fff; border: 1px solid #aaa; padding: 8px; margin-bottom: 24px; }
         .chartbox.line { height: 280px; }
         .chartbox .empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; color: #888; background: #fff; }
@@ -140,10 +133,10 @@
             <div class="t-bal" id="lblBal">SỐ DƯ THÁNG: 0 đ</div>
         </div>
 
-        <h4>BIỂU ĐỒ SO SÁNH THU / CHI</h4>
-        <div class="bars">
-            <div class="barrow"><div class="name">THU</div><div class="bartrack"><div class="bar inc" id="barInc" style="width:0"></div><span class="barval" id="barIncVal"></span></div></div>
-            <div class="barrow"><div class="name">CHI</div><div class="bartrack"><div class="bar exp" id="barExp" style="width:0"></div><span class="barval" id="barExpVal"></span></div></div>
+        <h4>BIỂU ĐỒ ĐƯỜNG: CHI TIÊU TỪNG NGÀY TRONG THÁNG (VNĐ)</h4>
+        <div class="chartbox line">
+            <canvas id="dailyChart"></canvas>
+            <div class="empty" id="dailyEmpty">Không có khoản chi nào trong tháng này</div>
         </div>
 
         <h4>BIỂU ĐỒ ĐƯỜNG: SỐ DƯ HÀNG THÁNG (VNĐ)</h4>
@@ -186,7 +179,7 @@
     let transactions = [];
     let storedCats = [];
     let currentTab = 0;
-    let lineChart = null, pieChart = null;
+    let lineChart = null, pieChart = null, dailyChart = null;
     const pendingSelect = [null, null];
 
     // ================= TIỆN ÍCH =================
@@ -447,13 +440,7 @@
         percentText(inc, pInc, true, $('pctInc'));
         percentText(exp, pExp, false, $('pctExp'));
 
-        // Biểu đồ cột thu / chi
-        const max = Math.max(inc, exp);
-        $('barInc').style.width = max > 0 ? (inc / max * 70) + '%' : '0';
-        $('barExp').style.width = max > 0 ? (exp / max * 70) + '%' : '0';
-        $('barIncVal').textContent = inc > 0 ? fmt(inc) : '';
-        $('barExpVal').textContent = exp > 0 ? fmt(exp) : '';
-
+        renderDailyChart(y, m);
         renderLineChart();
         renderPieChart(y, m);
     }
@@ -498,6 +485,77 @@
             ctx.restore();
         }
     };
+
+    // Nhãn số tiền trên các ngày có chi
+    const dailyLabelPlugin = {
+        id: 'dailyLabels',
+        afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            const ds = chart.data.datasets[0];
+            ctx.save();
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#DC143C';
+            chart.getDatasetMeta(0).data.forEach((pt, idx) => {
+                const v = ds.data[idx];
+                if (v > 0) ctx.fillText(formatShort(v), pt.x, pt.y - 10);
+            });
+            ctx.restore();
+        }
+    };
+
+    // Biểu đồ đường: chi tiêu từng ngày trong tháng đã chọn
+    function renderDailyChart(y, m) {
+        const days = new Date(y, m, 0).getDate();
+        const values = new Array(days).fill(0);
+        transactions.forEach(t => {
+            if (t.IsIncome) return;
+            const d = ym(t.Date);
+            if (d.y === y && d.m === m) values[parseInt(t.Date.slice(8, 10), 10) - 1] += t.Amount;
+        });
+        const has = values.some(v => v > 0);
+
+        $('dailyEmpty').style.display = has ? 'none' : 'flex';
+        if (dailyChart) { dailyChart.destroy(); dailyChart = null; }
+        if (!has) return;
+
+        dailyChart = new Chart($('dailyChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: values.map((_, i) => String(i + 1)),
+                datasets: [{
+                    label: 'Chi tiêu',
+                    data: values,
+                    borderColor: '#DC143C',
+                    borderWidth: 2.2,
+                    tension: 0,
+                    fill: false,
+                    pointRadius: values.map(v => v > 0 ? 4 : 0),
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#DC143C',
+                    pointBorderColor: '#DC143C'
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                layout: { padding: { top: 20, right: 20 } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: c => 'Ngày ' + c[0].label,
+                            label: c => 'Chi: ' + fmt(c.parsed.y) + ' đ'
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { autoSkip: true, maxTicksLimit: 31 } },
+                    y: { beginAtZero: true, grace: '12%', ticks: { callback: v => formatShort(v) } }
+                }
+            },
+            plugins: [dailyLabelPlugin]
+        });
+    }
 
     function renderLineChart() {
         let labels = [], values = [];
