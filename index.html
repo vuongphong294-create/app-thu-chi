@@ -88,6 +88,11 @@
         #pieLegend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0; }
         #pieLegend li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
         #pieLegend .sw { width: 12px; height: 12px; flex: none; }
+        #pieLegend li.pie-other-item { display: block; }
+        .pie-other-head { display: flex; align-items: center; gap: 8px; }
+        .pie-other-toggle { padding: 0; border: 0; background: none; color: #000; text-align: left; font: inherit; cursor: pointer; text-decoration: underline; }
+        .pie-other-details { margin: 6px 0 2px 20px; padding-left: 18px; }
+        #pieLegend .pie-other-details li { display: list-item; padding: 2px 0; }
 
         .status { padding: 6px 15px; color: #b00020; display: none; }
 
@@ -619,8 +624,9 @@
 
         let groups = Object.keys(map).map(k => [k, map[k]]).sort((a, b) => b[1] - a[1]);
         if (groups.length > 8) {
-            const rest = groups.slice(7).reduce((s, g) => s + g[1], 0);
-            groups = groups.slice(0, 7).concat([['Khác', rest]]);
+            const otherGroups = groups.slice(7);
+            const rest = otherGroups.reduce((s, g) => s + g[1], 0);
+            groups = groups.slice(0, 7).concat([[ 'Khác', rest, otherGroups ]]);
         }
         const total = groups.reduce((s, g) => s + g[1], 0);
 
@@ -637,7 +643,35 @@
             sw.style.background = PIE_COLORS[idx % PIE_COLORS.length];
             const tx = document.createElement('span');
             tx.textContent = g[0] + ': ' + (Math.round(g[1] / total * 1000) / 10) + '% (' + fmt(g[1]) + ' đ)';
-            li.append(sw, tx);
+            if (g[2]) {
+                li.className = 'pie-other-item';
+                const head = document.createElement('div');
+                head.className = 'pie-other-head';
+                const toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'pie-other-toggle';
+                toggle.textContent = tx.textContent + ' - Xem chi tiết';
+                toggle.setAttribute('aria-expanded', 'false');
+                const details = document.createElement('ul');
+                details.className = 'pie-other-details';
+                details.hidden = true;
+                g[2].forEach(other => {
+                    const detail = document.createElement('li');
+                    const pct = Math.round(other[1] / total * 1000) / 10;
+                    detail.textContent = other[0] + ': ' + pct + '% (' + fmt(other[1]) + ' đ)';
+                    details.appendChild(detail);
+                });
+                toggle.addEventListener('click', () => {
+                    details.hidden = !details.hidden;
+                    const expanded = !details.hidden;
+                    toggle.setAttribute('aria-expanded', String(expanded));
+                    toggle.textContent = tx.textContent + (expanded ? ' - Thu gọn' : ' - Xem chi tiết');
+                });
+                head.append(sw, toggle);
+                li.append(head, details);
+            } else {
+                li.append(sw, tx);
+            }
             legend.appendChild(li);
         });
 
